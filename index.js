@@ -4,14 +4,13 @@ dns.setServers(["8.8.8.8", "8.8.4.4"]);
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
@@ -28,43 +27,77 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     await client.connect();
-
     console.log("✅ MongoDB Connected");
 
-    const database = client.db("mediquee");
-    const tutorsCollection = database.collection("tutors");
+    const db = client.db("mediquee");
+    const tutorsCollection = db.collection("tutors");
 
-    // Add Tutor
+    // ➕ CREATE
     app.post("/tutors", async (req, res) => {
-      try {
-        const tutorData = req.body;
+      const result = await tutorsCollection.insertOne(req.body);
 
-        const result = await tutorsCollection.insertOne(tutorData);
-
-        res.send(result);
-      } catch (error) {
-        res.status(500).send({
-          success: false,
-          message: error.message,
-        });
-      }
+      res.send({
+        success: true,
+        message: "Tutor added successfully",
+        data: result,
+      });
     });
 
-    // Get All Tutors
+    // 📄 GET (MAX 6)
     app.get("/tutors", async (req, res) => {
-      try {
-        const result = await tutorsCollection.find().toArray();
-        res.send(result);
-      } catch (error) {
-        res.status(500).send({
-          success: false,
-          message: error.message,
-        });
-      }
+      const result = await tutorsCollection
+        .find()
+        .limit(6)
+        .toArray();
+
+      res.send({
+        success: true,
+        data: result,
+      });
+    });
+
+    // 📄 SINGLE
+    app.get("/tutors/:id", async (req, res) => {
+      const result = await tutorsCollection.findOne({
+        _id: new ObjectId(req.params.id),
+      });
+
+      res.send({
+        success: true,
+        data: result,
+      });
+    });
+
+    // ✏️ UPDATE
+    app.put("/tutors/:id", async (req, res) => {
+      const result = await tutorsCollection.updateOne(
+        { _id: new ObjectId(req.params.id) },
+        {
+          $set: req.body,
+        }
+      );
+
+      res.send({
+        success: true,
+        message: "Tutor updated successfully",
+        data: result,
+      });
+    });
+
+    // 🗑️ DELETE
+    app.delete("/tutors/:id", async (req, res) => {
+      const result = await tutorsCollection.deleteOne({
+        _id: new ObjectId(req.params.id),
+      });
+
+      res.send({
+        success: true,
+        message: "Tutor deleted successfully",
+        data: result,
+      });
     });
 
     await client.db("admin").command({ ping: 1 });
-
     console.log("✅ MongoDB Ping Successful");
   } catch (error) {
     console.error(error);
@@ -78,5 +111,5 @@ app.get("/", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server is running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
