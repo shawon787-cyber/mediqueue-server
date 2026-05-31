@@ -1,39 +1,82 @@
-const express = require('express');
-const { MongoClient, ServerApiVersion } = require('mongodb');
-const uri = "mongodb+srv://mediquee:uqnwokpndaNdjynN@cluster0.73klbbh.mongodb.net/?appName=Cluster0";
+const dns = require("node:dns");
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
+
+const express = require("express");
+const dotenv = require("dotenv");
+const cors = require("cors");
+const { MongoClient, ServerApiVersion } = require("mongodb");
+
+dotenv.config();
+
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+const uri = process.env.MONGODB_URI;
 
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
-  }
+  },
 });
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-    // Send a ping to confirm a successful connection
+
+    console.log("✅ MongoDB Connected");
+
+    const database = client.db("mediquee");
+    const tutorsCollection = database.collection("tutors");
+
+    // Add Tutor
+    app.post("/tutors", async (req, res) => {
+      try {
+        const tutorData = req.body;
+
+        const result = await tutorsCollection.insertOne(tutorData);
+
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: error.message,
+        });
+      }
+    });
+
+    // Get All Tutors
+    app.get("/tutors", async (req, res) => {
+      try {
+        const result = await tutorsCollection.find().toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: error.message,
+        });
+      }
+    });
+
     await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
-  } finally {
-    // Ensures that the client will close when you finish/error
-    await client.close();
+
+    console.log("✅ MongoDB Ping Successful");
+  } catch (error) {
+    console.error(error);
   }
 }
+
 run().catch(console.dir);
 
-app.get('/', (req, res) => {
-    res.send('Hello, World!');
+app.get("/", (req, res) => {
+  res.send("🚀 MediQueue Server Running");
 });
 
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+  console.log(`🚀 Server is running on port ${PORT}`);
 });
-
-
-// mediquee
-// uqnwokpndaNdjynN
