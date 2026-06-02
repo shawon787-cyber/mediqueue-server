@@ -120,7 +120,7 @@ async function run() {
       });
     }
 
-    booking.status = "Booked";
+    booking.status = "confirmed";
     booking.createdAt = new Date();
 
     await bookingsCollection.insertOne(booking);
@@ -158,7 +158,7 @@ async function run() {
           return res.status(404).json({ message: "Not found" });
         }
 
-        if (booking.status === "Cancelled") {
+        if (booking.status === "cancelled") {
           return res.status(400).json({
             message: "Already cancelled",
           });
@@ -167,7 +167,7 @@ async function run() {
         // update booking
         await bookingsCollection.updateOne(
           { _id: new ObjectId(id) },
-          { $set: { status: "Cancelled" } }
+          { $set: { status: "cancelled" } }
         );
 
         // restore slot
