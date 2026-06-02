@@ -31,6 +31,7 @@ async function run() {
 
     const db = client.db("mediquee");
     const tutorsCollection = db.collection("tutors");
+    const bookingsCollection = db.collection("bookings");
 
     // ➕ CREATE
     app.post("/tutors", async (req, res) => {
@@ -68,6 +69,53 @@ async function run() {
       });
     });
 
+    // ➕ BOOKING
+    app.post("/bookings", async (req, res) => {
+  const booking = {
+    ...req.body,
+    status: "Pending",
+    createdAt: new Date(),
+  };
+
+  const result = await bookingsCollection.insertOne(booking);
+
+  res.send({
+    success: true,
+    data: result,
+  });
+});
+
+app.get("/bookings/:email", async (req, res) => {
+  const email = req.params.email;
+
+  const result = await bookingsCollection
+    .find({ studentEmail: email })
+    .toArray();
+
+  res.send({
+    success: true,
+    data: result,
+  });
+});
+
+app.patch("/bookings/:id", async (req, res) => {
+  const result = await bookingsCollection.updateOne(
+    {
+      _id: new ObjectId(req.params.id),
+    },
+    {
+      $set: {
+        status: "Cancelled",
+      },
+    }
+  );
+
+  res.send({
+    success: true,
+    data: result,
+  });
+});
+
     // ✏️ UPDATE
     app.put("/tutors/:id", async (req, res) => {
       const result = await tutorsCollection.updateOne(
@@ -83,6 +131,7 @@ async function run() {
         data: result,
       });
     });
+    
 
     // 🗑️ DELETE
     app.delete("/tutors/:id", async (req, res) => {
