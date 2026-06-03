@@ -53,14 +53,59 @@ async function run() {
     // =====================
     // 📄 GET ONLY 6 TUTORS
     // =====================
-    app.get("/tutors", async (req, res) => {
-      const result = await tutorsCollection.find().limit(6).toArray();
+    // app.get("/tutors", async (req, res) => {
+    //   const result = await tutorsCollection.find().limit(6).toArray();
 
-      res.json({
-        success: true,
-        data: result,
-      });
+    //   res.json({
+    //     success: true,
+    //     data: result,
+    //   });
+    // });
+    // =====================
+// 📄 GET TUTORS (SEARCH + FILTER)
+// =====================
+app.get("/tutors", async (req, res) => {
+  try {
+    const search = req.query.search || "";
+    const startDate = req.query.startDate;
+    const endDate = req.query.endDate;
+
+    const query = {};
+
+    // 🔍 SEARCH by tutor name (case-insensitive)
+    if (search) {
+      query.tutorName = {
+        $regex: search,
+        $options: "i",
+      };
+    }
+
+    // 📅 DATE FILTER (registration/session date)
+    if (startDate || endDate) {
+      query.sessionStartDate = {};
+
+      if (startDate) {
+        query.sessionStartDate.$gte = startDate;
+      }
+
+      if (endDate) {
+        query.sessionStartDate.$lte = endDate;
+      }
+    }
+
+    const result = await tutorsCollection.find(query).limit(6).toArray();
+
+    res.json({
+      success: true,
+      data: result,
     });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
 
     // =====================
     // 📄 SINGLE TUTOR
@@ -139,6 +184,61 @@ async function run() {
   }
 });
 
+// =====================
+// ✅ CONFIRM BOOKING
+// =====================
+app.patch("/bookings/confirm/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({
+        message: "Invalid ID",
+      });
+    }
+
+    const booking = await bookingsCollection.findOne({
+      _id: new ObjectId(id),
+    });
+
+    if (!booking) {
+      return res.status(404).json({
+        message: "Booking not found",
+      });
+    }
+
+    if (booking.status === "Confirmed") {
+      return res.status(400).json({
+        message: "Already confirmed",
+      });
+    }
+
+    if (booking.status === "Cancelled") {
+      return res.status(400).json({
+        message: "Cancelled booking cannot be confirmed",
+      });
+    }
+
+    await bookingsCollection.updateOne(
+      { _id: new ObjectId(id) },
+      {
+        $set: {
+          status: "Confirmed",
+        },
+      }
+    );
+
+    res.json({
+      success: true,
+      message: "Booking confirmed successfully",
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+});
+
     // =====================
     // ❌ CANCEL BOOKING (FIXED)
     // =====================
@@ -185,9 +285,9 @@ async function run() {
       }
     });
 
-    // =====================
-    // 📄 BOOKINGS BY EMAIL
-    // =====================
+    
+    //  BOOKINGS BY EMAIL
+  
     app.get("/bookings/:email", async (req, res) => {
       const result = await bookingsCollection
         .find({ studentEmail: req.params.email })
@@ -197,7 +297,7 @@ async function run() {
     });
 
     // =====================
-    // 🗑️ DELETE TUTOR
+    //  DELETE TUTOR
     // =====================
     app.delete("/tutors/:id", async (req, res) => {
       await tutorsCollection.deleteOne({
